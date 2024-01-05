@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { Form } from "../components/l0001/src/components/form";
 
 const View = (props) => {
-  const { access_token: accessToken, id } = /*router.query ||*/ props;
+  const { access_token: accessToken, id } = /*router.query ||*/ {id: "eyJ0YXNrSWRzIjpbInlBUWJPT2YwZlhuVTBDRlh2TkhlIl19"} //props;
   const [ recompile, setRecompile ] = useState(true);
   const createState = (data, reducer) => {
     return {
@@ -38,9 +38,9 @@ const View = (props) => {
   }));
 
   console.log("View() recompile=" + recompile + " id=" + id);
-    
+
   const resp = useSWR(
-    recompile && accessToken && id && {
+    recompile && id && {
       accessToken,
       id,
       data: state.data,

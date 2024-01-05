@@ -7,24 +7,22 @@ import {
   shouldRenderGraphiQL,
   renderGraphiQL,
 } from "graphql-helix";
-import { postCompile } from "./resolvers.js";
+import {
+  compiles,
+  postCompile
+} from "./resolvers.js";
 import bent from "bent";
-import { client } from "../../lib/auth";
+import { getBaseUrlForApi } from "../../lib/api";
+import { client, getBaseUrlForAuth } from "../../lib/auth";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-
-const baseAuthUrl = "https://auth.graffiticode.org";
-const baseApiUrl = "https://api.graffiticode.org";
-//const baseAuthUrl = "http://localhost:4100";
-//const baseApiUrl = "http://localhost:3100";
-
 const apiUrl = process.env.NEXT_PUBLIC_GC_API_URL || "https://api.graffiticode.com";
 
-const getApiJSON = bent(apiUrl, "GET", "json");
+const getApiJSON = bent(getBaseUrlForApi(), "GET", "json");
 
 const postApiJSON = baseUrl => bent(baseUrl, "POST", "json", 200, 500);
 
@@ -32,6 +30,7 @@ const { GC_API_KEY_ID, GC_API_KEY_SECRET } = process.env;
 
 const getAccessToken = async () => {
   console.log("GC_API_KEY_ID=" + GC_API_KEY_ID);
+  const baseAuthUrl = getBaseUrlForAuth();
   // Exchange API key for auth token.
   const post = await postApiJSON(baseAuthUrl);
   const { data } = await post(
@@ -39,6 +38,7 @@ const getAccessToken = async () => {
     { token: GC_API_KEY_SECRET },
     200, 401
   );
+  console.log("getAccessToken() data=" + JSON.stringify(data));
   if (data) {
     const { accessToken } = data;
     return accessToken;
@@ -61,12 +61,19 @@ const getApiData = async ({ accessToken, id }) => {
 };
 
 const typeDefs = `
+  type Compile {
+    id: String!
+    timestamp: String!
+    status: String!
+    lang: String
+  }
   type Data {
-    solution: String
-    projectionName: String
+    val: String
+    json: String
   }
   type Query {
     hello: String
+    compiles(lang: String!, type: String!): [Compile!]
   }
   type Mutation {
     compile(id: String!, data: String!, ephemeral: Boolean): Data
@@ -78,6 +85,12 @@ const resolvers = {
     hello: () => {
       return "hello, world!"
     },
+    compiles: async (_, args, ctx) => {
+      const { token } = ctx;
+      const { lang, type } = args;
+      const { uid } = await client.verifyToken(token);
+      return await compiles({ uid, accessToken: token, lang, type });
+    },
   },
   Mutation: {
     compile: async (_, args, ctx) => {
@@ -85,7 +98,6 @@ const resolvers = {
       const id = args.id;
       const data = JSON.parse(args.data);
       const { uid } = await client.verifyToken(token);
-      console.log("compile() uid=" + uid); 
       const resp = await postCompile({ accessToken: token, id, data });
       return resp;
     },

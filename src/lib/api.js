@@ -43,8 +43,11 @@ export const postApiCompile = async ({ accessToken, id, data }) => {
 
 export const postCompile = async ({ id, data }) => {
   const query = gql`
-    mutation (id: String!, data: String!) {
-      compile(id: $id, data: $data)
+    mutation ($id: String!, $data: String!) {
+      compile(id: $id, data: $data) {
+        val
+        json
+      }
     }
   `;
   // const token = await user.getToken();
@@ -53,6 +56,8 @@ export const postCompile = async ({ id, data }) => {
       // authorization: token,
     }
   });
-  return client.request(query, { id, daa }).then(data => data.compile);
+  data = JSON.stringify(data);
+  console.log("postCompile() id=" + id + " data=" + data);
+  return client.request(query, { id, data }).then(data => data.compile);
 };
 
